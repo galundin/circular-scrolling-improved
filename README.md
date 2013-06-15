@@ -17,7 +17,8 @@ Users already accustomed to the current Circular Scrolling gesture shouldn't be 
 
 As stated in the open source synaptics driver's man page:
 
-> "Use tight circles near the center of the pad for fast scrolling and large circles for better control."
+> "Use tight circles near the center of the pad for 
+> fast scrolling and large circles for better control."
 
 This recommendation is still perfectly appropriate, except that the circling doesn't need to be centered to the pad, it can be anywhere. I tried to find an optimal balance between latency and noise in response to radius and speed, consistent with that description. This is the main difference from ChiralMotion, in which the magnitude of scrolling is a function of distance moved. My implementation might actually be more intuitive and reliable than ChiralMotion. I'm sure the filter parameters could use a bit of tuning, but it works fairly well already.
 
