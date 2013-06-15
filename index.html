@@ -1,0 +1,330 @@
+<html><head>
+<script>
+/*
+  Copyright 2013 Andrew Lundin
+  MIT License
+  http://opensource.org/licenses/MIT
+*/
+
+var prev_x = 0;
+var prev_y = 0;
+var prev_angle = 0;
+var prev_distance = 0;
+var filter_delta = 0;
+var adaptive_delta = 0;
+var coasting_timer = 0;
+
+function handleMouseMove (event) {
+    // new event cancels coasting
+    if (coasting_timer) window.clearInterval(coasting_timer);
+
+    var dx = event.clientX - prev_x;
+    var dy = event.clientY - prev_y;
+
+    var angle = Math.atan2(dy, dx);
+    var delta = delta_angle(prev_angle, angle);
+    var abs_delta = Math.abs(delta);
+    var distance = Math.sqrt(dx * dx + dy * dy);
+
+    // clamp spikes
+    if (abs_delta > .5) delta = .5 * delta / abs_delta;
+
+    // error estimation
+    var delta_error = delta - filter_delta;
+    delta_error *= delta_error;
+
+    // naive filter for error estimation on next event
+    filter_delta = (delta + filter_delta) / 2;
+
+    // reduce weight for small movements
+    var min_distance = Math.min(distance, prev_distance);
+    var distance_factor = Math.log(1 + min_distance / 10);
+
+    // adaptive filter coefficient
+    var weight = abs_delta * distance_factor / (1 + delta_error * 100);
+    if (weight > 1) weight = 1;
+
+    // adaptive filter
+    adaptive_delta = delta * weight + adaptive_delta * (1 - weight);
+
+    // for improved reliability and dynamic range,
+    // actual output has cubic response, e.g. n*n*n
+    // this is handled in update_bar() and update_chunk_position()
+
+    // store history
+    prev_x = event.clientX;
+    prev_y = event.clientY;
+    prev_angle = angle;
+    prev_distance = distance;
+
+    // update bar graphs and scrolling chunk of sample content
+    show_output(delta);
+
+    // begin coasting if no event received after a short delay
+    coasting_timer = window.setInterval(coast, 30)
+}
+
+function delta_angle(a1, a2) {
+    var n = (a2 - a1);
+    var d = 2 * Math.PI;
+    var da = n - parseInt(n / d) * d;
+    if (da < 0) da += d;
+    if (da > Math.PI) da -= d;
+    return da;
+}
+
+function coast() {
+    var friction = .02;
+    if (adaptive_delta > friction) adaptive_delta -= friction;
+    else if (adaptive_delta < -friction) adaptive_delta += friction;
+    else {
+        adaptive_delta = 0;
+        window.clearInterval(coasting_timer);
+    }
+    filter_delta = 0;
+    show_output(0);
+}
+
+
+/*
+    The remaining cruft is not relevant to the gesture algorithm
+*/
+
+
+var chunk_pos = 240;
+
+function show_output(delta) {
+    update_bar("raw", delta);
+    update_bar("filtered", filter_delta);
+    update_bar("smooth", adaptive_delta);
+    update_chunk_position(adaptive_delta);
+}
+
+function update_chunk_position(value) {
+    output_value = value * value * value;  // cubic response
+    chunk_pos -= output_value * 500;
+    if (chunk_pos < 0) chunk_pos += 480;
+    if (chunk_pos > 480) chunk_pos -= 480;
+    var chunk = document.getElementById("chunk");
+    chunk.style.top = parseInt(chunk_pos) + "px";
+}
+
+function update_bar(name, value) {
+    checkbox = document.getElementById(name + "_checkbox");
+    if (!checkbox.checked) return;
+    output_value = value * value * value;  // cubic response
+    display_value = output_value * 2000;
+    var bar = document.getElementById(name);
+    bar.style.height = parseInt(Math.abs(display_value)) + "px";
+    if (display_value < 0) {
+        bar.style.top = 250 + parseInt(display_value) + "px";
+        bar.style.backgroundColor = "red";
+    } else {
+        bar.style.top = 250 + "px";
+        bar.style.backgroundColor = "blue";
+    }
+}
+
+function toggle_bar(name) {
+    var bar = document.getElementById(name);
+    var checkbox = document.getElementById(name + "_checkbox");
+    if (!checkbox.checked) {
+        bar.style.height = 0;
+        bar.parentNode.style.backgroundColor = "lightgray";
+    } else {
+        bar.parentNode.style.backgroundColor = "white";
+    }
+}
+
+function create_bar(label, id, checked) {
+    return "<div id='barContainer'><div class='labelContainer'><div class='label'>"
+    + "<input type='checkbox' id='" + id + "_checkbox' "
+    + "onclick='toggle_bar(\"" + id + "\");' " + checked + ">"
+    + label + "</input></div></div><div class='bar' id='"
+    + id + "'></div></div>";
+}
+
+function init() {
+    var pad = document.getElementById("pad");
+    window.onmousemove = handleMouseMove;
+    bar_markup = create_bar("raw", "raw", "")
+               + create_bar("simple filter", "filtered", "")
+               + create_bar("adaptive filter", "smooth", "checked");
+    document.getElementById("barPlaceholder").innerHTML = bar_markup;
+    toggle_bar("raw");
+    toggle_bar("filtered");
+    toggle_bar("smooth");
+    handleMouseMove({clientX:0,clientY:0});
+}
+
+</script>
+
+<style>
+    * {
+        font-family: sans-serif;
+        font-size: 14px;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+    
+    #intro {
+        max-width: 700px;
+        margin-left: 20px;
+        float: left;
+    }
+
+    #chunkContainer, #barContainer {
+        position: relative;
+        float: left;
+        border: 1px solid black;
+        width: 20px;
+        height: 500px;
+        margin: 0 5px;
+    }
+
+    .labelContainer {
+        position: absolute;
+        bottom: 5px;
+        left: 2px;
+        -webkit-transform: rotate(-90deg);
+        -moz-transform: rotate(-90deg);
+        -ms-transform: rotate(-90deg);
+        -o-transform: rotate(-90deg);
+        transform: rotate(-90deg);
+    }
+
+    input {
+        margin-top: 0;
+        
+    }
+    .label {
+        position: absolute;
+        white-space: pre;
+        top: -50%;
+    }
+
+    #chunk {
+        position: relative;
+        width: 20px;
+        height: 20px;
+        top: 240px;
+        color: yellow;
+        background-color: green;
+        text-align: center;
+        line-height: 20px;
+    }
+
+    .bar {
+        position: relative;
+        width: 20px;
+    }
+
+    #raw {
+        opacity: 0.3;
+    }
+
+    #filtered {
+        opacity: 0.5;
+    }
+
+    #smooth {
+        opacity: 0.7;
+    }
+
+    table {
+        border: 2px solid black;
+        border-spacing: 0;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        border: 1px solid black;
+        padding: 5px;
+        text-align: center;
+    }
+
+    th {
+        background-color: lightgray;
+    }
+
+    .divider {
+        border-right: 3px solid black;
+    }
+
+</style>
+
+</head>
+<body onload="init();">
+
+    <div id="barPlaceholder"></div>
+    <div id="chunkContainer"><div class="labelContainer"><div class="label">scrolling content</div></div><div id="chunk">@</div></div>
+
+    <div id="intro">
+        <h1>Circular Scrolling Improved</h1>
+        <p>This is a prototype of a touch input gesture that does not infringe 
+        any patents known to the author.  For a proper introduction, refer to the 
+        <a href="http://github.com/galundin/xorg-synaptics-circscroll-improved">README</a>.</p>
+        
+        <p>Move the cursor around in clockwise and counter-clockwise circles 
+        anywhere on this page and watch the output.  It works best when 
+        controlled with an actual touchpad or touchscreen, because mouse 
+        control doesn't provide the same dexterity as a finger.  This prototype 
+        assumes that circular scrolling mode is already engaged.</p>
+        
+        <table>
+            <tr>
+                <th colspan="2" class="divider">rotational input</th>
+                <th colspan="4">scrolling output</th>
+            </tr>
+            <tr>
+                <th>radius</th>
+                <th class="divider">speed</th>
+                <th>speed</th>
+                <th>latency</th>
+                <th>noise</th>
+                <th>best usage</th>
+            </tr>
+            <tr>
+                <td>wide</td>
+                <td class="divider">slow</td>
+                <td>very slow</td>
+                <td>very high</td>
+                <td>very low</td>
+                <td>precision control</td>
+            </tr>
+            <tr>
+                <td>wide</td>
+                <td class="divider">fast</td>
+                <td>medium</td>
+                <td>low</td>
+                <td>high</td>
+                <td>quick response</td>
+            </tr>
+            <tr>
+                <td>tight</td>
+                <td class="divider">slow</td>
+                <td>medium</td>
+                <td>very high</td>
+                <td>low</td>
+                <td>"gliding"</td>
+            </tr>
+            <tr>
+                <td>tight</td>
+                <td class="divider">fast</td>
+                <td>very fast</td>
+                <td>moderate</td>
+                <td>moderate</td>
+                <td>speeding</td>
+            </tr>
+        </table>
+        
+        <p><b>ProTip</b>: kick-in with a wide arc, then tighten to speed or glide.</p>
+    </div>
+
+</body>
+</html>
+
