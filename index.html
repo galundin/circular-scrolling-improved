@@ -137,24 +137,24 @@ function toggle_bar(name) {
 }
 
 function create_bar(label, id, checked) {
-    return "<div id='barContainer'><div class='labelContainer'><div class='label'>"
-    + "<input type='checkbox' id='" + id + "_checkbox' "
+    if (checked == null) checked = "";
+    return "<div id='barContainer'><div class='labelContainer'>"
+    + "<div class='label'><input type='checkbox' id='" + id + "_checkbox' "
     + "onclick='toggle_bar(\"" + id + "\");' " + checked + ">"
     + label + "</input></div></div><div class='bar' id='"
     + id + "'></div></div>";
 }
 
 function init() {
-    var pad = document.getElementById("pad");
-    window.onmousemove = handleMouseMove;
-    bar_markup = create_bar("raw", "raw", "")
-               + create_bar("simple filter", "filtered", "")
+    bar_markup = create_bar("raw", "raw")
+               + create_bar("simple filter", "filtered")
                + create_bar("adaptive filter", "smooth", "checked");
     document.getElementById("barPlaceholder").innerHTML = bar_markup;
     toggle_bar("raw");
     toggle_bar("filtered");
     toggle_bar("smooth");
     handleMouseMove({clientX:0,clientY:0});
+    window.onmousemove = handleMouseMove;
 }
 
 </script>
@@ -170,11 +170,15 @@ function init() {
         -ms-user-select: none;
         user-select: none;
     }
-    
+
+    .hspacer {
+        float: left;
+        width: 15px;
+        height: 500px;
+    }
+
     #intro {
         max-width: 700px;
-        margin-left: 20px;
-        float: left;
     }
 
     #chunkContainer, #barContainer {
@@ -262,6 +266,7 @@ function init() {
 
     <div id="barPlaceholder"></div>
     <div id="chunkContainer"><div class="labelContainer"><div class="label">scrolling content</div></div><div id="chunk">@</div></div>
+    <div class="hspacer"></div>
 
     <div id="intro">
         <h1>Circular Scrolling Improved</h1>
@@ -281,48 +286,48 @@ function init() {
                 <th colspan="4">scrolling output</th>
             </tr>
             <tr>
-                <th>radius</th>
-                <th class="divider">speed</th>
+                <th>speed</th>
+                <th class="divider">radius</th>
                 <th>speed</th>
                 <th>latency</th>
                 <th>noise</th>
                 <th>best usage</th>
             </tr>
             <tr>
-                <td>wide</td>
-                <td class="divider">slow</td>
+                <td>slow</td>
+                <td class="divider">wide</td>
                 <td>very slow</td>
-                <td>very high</td>
-                <td>very low</td>
-                <td>precision control</td>
-            </tr>
-            <tr>
-                <td>wide</td>
-                <td class="divider">fast</td>
-                <td>medium</td>
-                <td>low</td>
                 <td>high</td>
-                <td>quick response</td>
+                <td>very low</td>
+                <td>precise control</td>
             </tr>
             <tr>
-                <td>tight</td>
-                <td class="divider">slow</td>
-                <td>medium</td>
+                <td>slow</td>
+                <td class="divider">tight</td>
+                <td>slow</td>
                 <td>very high</td>
                 <td>low</td>
                 <td>"gliding"</td>
             </tr>
             <tr>
-                <td>tight</td>
-                <td class="divider">fast</td>
+                <td>fast</td>
+                <td class="divider">wide</td>
+                <td>fast</td>
+                <td>low</td>
+                <td>high</td>
+                <td>quick response</td>
+            </tr>
+            <tr>
+                <td>fast</td>
+                <td class="divider">tight</td>
                 <td>very fast</td>
-                <td>moderate</td>
+                <td>high</td>
                 <td>moderate</td>
                 <td>speeding</td>
             </tr>
         </table>
         
-        <p><b>ProTip</b>: kick-in with a wide arc, then tighten to speed or glide.</p>
+        <p><b>ProTip</b>: kick-in with a wide arc, then tighten and glide almost effortlessly.</p>
     </div>
 
 </body>
